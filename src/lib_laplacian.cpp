@@ -30,7 +30,126 @@ Eigen::SparseMatrix<double> build_graph_laplacian(const Eigen::MatrixXi &faces, 
     S.resize(nv, nv);
 
 
+    // //Test
+    // nv=4;
+    // Eigen::MatrixXi faces_test(2,3);
+    // faces_test(0,0)=0;
+    // faces_test(0,1)=1;
+    // faces_test(0,2)=2;
+    // faces_test(1,0)=1;
+    // faces_test(1,1)=3;
+    // faces_test(1,2)=2;
+    // std::cout << "face test is \n" << faces_test << '\n';
 
+    //adjacency matrix
+    Eigen::SparseMatrix<double> adjacency_matrix(nv, nv);
+    std::vector<Eigen::Triplet<double>> adjacency_coeff;
+    // Eigen::MatrixXd dense_adjacency= Eigen::MatrixXd::Zero(nv,nv);
+    for (size_t i = 0; i < faces.rows(); i++) {
+      //there are 3 vertices to a triangle and we need the adyancency between all of them
+      // vertces 0 and 1
+      // dense_adjacency(faces(i,0), faces(i,1)) = 1;
+      // dense_adjacency(faces(i,1), faces(i,0)) = 1;
+      //
+      // // //vertex 1 and 2
+      // dense_adjacency(faces(i,1), faces(i,2)) = 1;
+      // dense_adjacency(faces(i,2), faces(i,1)) = 1;
+      //
+      // // //vertex 2 and 0
+      // dense_adjacency(faces(i,2), faces(i,0)) = 1;
+      // dense_adjacency(faces(i,0), faces(i,2)) = 1;
+
+      // // vertces 0 and 1
+      // if (adjacency_matrix.coeff(faces_test(i,0), faces_test(i,1))!=1 ){
+      //    adjacency_matrix.coeffRef(faces_test(i,0), faces_test(i,1))= 1;
+      // }
+      // if (adjacency_matrix.coeff(faces_test(i,1), faces_test(i,0))!=1 ){
+      //    adjacency_matrix.coeffRef(faces_test(i,1), faces_test(i,0))= 1;
+      // }
+      //
+      // // // //vertex 1 and 2
+      // if (adjacency_matrix.coeff(faces_test(i,1), faces_test(i,2))!=1 ){
+      //    adjacency_matrix.coeffRef(faces_test(i,1), faces_test(i,2))= 1;
+      // }
+      // if (adjacency_matrix.coeff(faces_test(i,2), faces_test(i,1))!=1 ){
+      //    adjacency_matrix.coeffRef(faces_test(i,2), faces_test(i,1))= 1;
+      // }
+      //
+      // //vertex 2 and 0
+      // if (adjacency_matrix.coeff(faces_test(i,2), faces_test(i,0))!=1 ){
+      //    adjacency_matrix.coeffRef(faces_test(i,2), faces_test(i,0))= 1;
+      // }
+      // if (adjacency_matrix.coeff(faces_test(i,0), faces_test(i,2))!=1 ){
+      //    adjacency_matrix.coeffRef(faces_test(i,0), faces_test(i,2))= 1;
+      // }
+
+      // vertex 0 and 1
+      adjacency_coeff.emplace_back(faces(i,0), faces(i,1), 1);
+      adjacency_coeff.emplace_back(faces(i,1), faces(i,0), 1);
+
+      // vertex 1 and 2
+      adjacency_coeff.emplace_back(faces(i,1), faces(i,2), 1);
+      adjacency_coeff.emplace_back(faces(i,2), faces(i,1), 1);
+
+      // vertex 2 and 0
+      adjacency_coeff.emplace_back(faces(i,2), faces(i,0), 1);
+      adjacency_coeff.emplace_back(faces(i,0), faces(i,2), 1);
+
+    }
+    adjacency_matrix.setFromTriplets(adjacency_coeff.begin(), adjacency_coeff.end());
+
+    //Set the adjacency matrix to 1
+    for (size_t i = 0; i < adjacency_matrix.rows(); i++) {
+      for (size_t j = 0; j < adjacency_matrix.cols(); j++) {
+        if (adjacency_matrix.coeff(i,j)>1) {
+          adjacency_matrix.coeffRef(i,j)=1;
+        }
+      }
+    }
+
+
+
+
+    // Eigen::MatrixXd dense_adjacency = Eigen::MatrixXd(adjacency_matrix);
+    // std::cout << "adyancecy matrix is \n " << dense_adjacency << '\n';
+    // adjacency_matrix=dense_adjacency.sparseView();
+
+    // // //Degree matrix
+    // Eigen::SparseMatrix<double> degree_matrix(nv, nv);
+    // std::vector<Eigen::Triplet<double>> degree_coeff;
+    // for (size_t i = 0; i < dense_adjacency.rows(); i++) {
+    //   int degree=0;
+    //   for (size_t j = 0; j < dense_adjacency.cols(); j++) {
+    //     if (dense_adjacency(i,j)!=0 ){
+    //       degree++;
+    //     }
+    //   }
+    //   degree_coeff.emplace_back(i, i, degree);
+    // }
+    // degree_matrix.setFromTriplets(degree_coeff.begin(), degree_coeff.end());
+    // // Eigen::MatrixXd dense_degree = Eigen::MatrixXd(degree_matrix);
+    // // std::cout << "degree_matrix is \n " << dense_degree << '\n';
+    //
+    // L=0.5*(adjacency_matrix-degree_matrix);
+
+
+    //degree matrix
+    Eigen::SparseMatrix<double> degree_matrix(nv, nv);
+    std::vector<Eigen::Triplet<double>> degree_coeff;
+    for (size_t i = 0; i < adjacency_matrix.rows(); i++) {
+      int degree=0;
+      for (size_t j = 0; j < adjacency_matrix.cols(); j++) {
+        if (adjacency_matrix.coeff(i,j)!=0 ){
+          degree++;
+        }
+      }
+      degree_coeff.emplace_back(i, i, degree);
+    }
+    degree_matrix.setFromTriplets(degree_coeff.begin(), degree_coeff.end());
+    // Eigen::MatrixXd dense_degree = Eigen::MatrixXd(degree_matrix);
+    // std::cout << "degree_matrix is \n " << dense_degree << '\n';
+
+    L=0.5*(adjacency_matrix-degree_matrix);
 
     return L;
 }
