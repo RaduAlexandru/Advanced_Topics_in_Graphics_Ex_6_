@@ -277,6 +277,61 @@ Eigen::SparseMatrix<double> build_cotan_laplacian(const Eigen::MatrixXd &points,
     Eigen::SparseMatrix<double> L(nv, nv);
     M.resize(nv, nv);
     S.resize(nv, nv);
+
+    // Create the adjacency matrix
+    Eigen::SparseMatrix<double> adjacency_matrix(nv, nv);
+    for (size_t i = 0; i < faces.rows(); i++)
+    {
+      int x = faces(i,0);
+      int y = faces(i,1);
+      int z = faces(i,2);
+      adjacency_matrix.coeffRef(x,y) = 1;
+      adjacency_matrix.coeffRef(y,x) = 1;
+      adjacency_matrix.coeffRef(x,z) = 1;
+      adjacency_matrix.coeffRef(z,x) = 1;
+      adjacency_matrix.coeffRef(y,z) = 1;
+      adjacency_matrix.coeffRef(z,y) = 1;
+}
+
+
+
+    for (size_t i = 0; i < faces.rows(); i++) {
+      Eigen::VectorXd p1=points.row(faces(i,0));
+      Eigen::VectorXd p2=points.row(faces(i,1));
+      Eigen::VectorXd p3=points.row(faces(i,2));
+
+      std::vector<float> angles(3);
+
+      //angle at p1
+      Eigen::VectorXd p1_l1= (p2-p1).normalized();
+      Eigen::VectorXd p1_l2= (p3-p1).normalized();
+      angles[0]= safe_acos(p1_l1.dot(p1_l2));
+
+      Eigen::VectorXd p2_l1= (p1-p2).normalized();
+      Eigen::VectorXd p2_l2= (p3-p2).normalized();
+      angles[1]= safe_acos(p2_l1.dot(p2_l2));
+
+      Eigen::VectorXd p3_l1= (p2-p3).normalized();
+      Eigen::VectorXd p3_l2= (p1-p3).normalized();
+      angles[2]= safe_acos(p3_l1.dot(p3_l2));
+
+      // float sum_of_elems=0.0;
+      // for (auto& n : angles)
+      //   sum_of_elems += n;
+      // std::cout << "angles sum is" <<sum_of_elems << '\n';
+
+      //Triangle area
+      float l1_norm= (p1-p2).norm();
+      float l2_norm= (p1-p3).norm();
+      float l3_norm= (p2-p3).norm();
+      float area= triangle_area_from_metric(l1_norm,l2_norm,l3_norm);
+
+      // std::cout << "angle is" << angles[0] << '\n';
+
+    }
+
+
+
     return L;
 }
 
@@ -311,6 +366,14 @@ Eigen::MatrixXd smooth_explicit(const Eigen::MatrixXd points,
                                 const bool normalize)
 {
     Eigen::MatrixXd smooth_points(points.rows(), points.cols());
+
+    smooth_points=points;
+    for (size_t i = 0; i < 50; i++) {
+      smooth_points= smooth_points+ 0.25*L*smooth_points;
+    }
+
+
+
     return smooth_points;
 }
 
@@ -341,5 +404,29 @@ Eigen::MatrixXd smooth_explicit(const Eigen::MatrixXd points,
 Eigen::MatrixXd smooth_implicit(const Eigen::MatrixXd points, const Eigen::MatrixXi &faces, const int nsteps, const double time, Eigen::SparseMatrix<double> &L, const bool recompute, const bool normalize)
 {
     Eigen::MatrixXd smooth_points(points.rows(), points.cols());
+    smooth_points=points;
+
+    float steplength=0.25;
+
+    //Ax=b
+    Eigen::BiCGSTAB<Eigen::SparseMatrix<double> > solver;
+
+    //A
+    Eigen::SparseMatrix<double> I (points.rows(), points.rows());
+    I.setIdentity();
+    Eigen::SparseMatrix<double> A = I-steplength*L;
+
+
+
+    //solve
+    solver.compute(A);
+    for (size_t i = 0; i < 50; i++) {
+      smooth_points = solver.solve(smooth_points);
+    }
+
+
+
+
+
     return smooth_points;
 }
